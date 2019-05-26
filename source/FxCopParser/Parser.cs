@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
 
@@ -6,71 +7,92 @@ namespace FxCopParser
 {
     public class Parser
     {
-        public void Parse(string fileName, Results results)
+        public void Parse(Result result)
         {
-            XDocument doc = XDocument.Load(fileName);
-            var issues = GetAllIssues(doc);
-
-            results.NumberOfIssues = issues.Count;
-
-            var criticalErrors = GetCriticalErrors(issues);
-            var errors = GetErrors(issues);
-            var criticalWarnings = GetCriticalWarnings(issues);
-            var warnings = GetWarnings(issues);
-
-            results.NumberOfCriticalErrors = criticalErrors.Count;
-            results.NumberOfErrors = errors.Count;
-            results.NumberOfCriticalWarnings = criticalWarnings.Count;
-            results.NumberOfWarnings = warnings.Count;
+            result.Document = XDocument.Load(result.FileName);
+            GetIssueCount(result);
         }
 
-        private List<XElement> GetAllIssues(XDocument doc)
+        private void GetIssueCount(Result result)
         {
             IEnumerable<XElement> issues =
-                from el in doc.Descendants("Issue")
-                select el;
+                from item in result.Document.Descendants("Issue")
+                select item;
 
-            return issues.ToList();
-        }
+            result.NumberOfTotalIssues = issues.Count();
+            result.Issues = issues.ToList();
 
-        private List<XElement> GetCriticalErrors(List<XElement> issues)
-        {
+            //---------------------------------------------------------------
+
+            IEnumerable<XElement> criticalErrors =
+                from item in result.Issues
+                where (string)item.Attribute("Level") == "CriticalError"
+                select item;
+
+            result.NumberOfCriticalErrors = criticalErrors.Count();
+
+            Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++");
+            Console.WriteLine("Critical Errors   : " + result.NumberOfCriticalErrors);
+            Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++");
+
+            Print(criticalErrors);
+
+            //---------------------------------------------------------------
+
             IEnumerable<XElement> errors =
-                from el in issues
-                where (string)el.Attribute("Level") == "CriticalError"
-                select el;
+                           from item in issues
+                           where (string)item.Attribute("Level") == "Error"
+                           select item;
 
-            return errors.ToList();
+            result.NumberOfErrors = errors.Count();
+
+            Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++");
+            Console.WriteLine("Errors            : " + result.NumberOfErrors);
+            Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++");
+
+            Print(errors);
+
+            //---------------------------------------------------------------
+
+            IEnumerable<XElement> criticalWarnings =
+                           from item in issues
+                           where (string)item.Attribute("Level") == "CriticalWarning"
+                           select item;
+
+            result.NumberOfCriticalWarnings = criticalWarnings.Count();
+
+            Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++");
+            Console.WriteLine("Critical Warnings : " + result.NumberOfCriticalWarnings);
+            Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++");
+
+            Print(criticalWarnings);
+
+            //---------------------------------------------------------------
+
+            IEnumerable<XElement> warnings =
+                           from item in issues
+                           where (string)item.Attribute("Level") == "Warning"
+                           select item;
+
+            result.NumberOfWarnings = warnings.Count();
+
+            Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++");
+            Console.WriteLine("Warnings          : " + result.NumberOfWarnings);
+            Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++");
+
+            Print(warnings);
+
         }
 
-        private List<XElement> GetErrors(List<XElement> issues)
+        private void Print(IEnumerable<XElement> issues)
         {
-            IEnumerable<XElement> errors =
-                from el in issues
-                where (string)el.Attribute("Level") == "Error"
-                select el;
-
-            return errors.ToList();
+            foreach (var item in issues)
+            {
+                Console.WriteLine("");
+                Console.WriteLine(item);
+                Console.WriteLine("");
+            }
         }
 
-        private List<XElement> GetCriticalWarnings(List<XElement> issues)
-        {
-            IEnumerable<XElement> warn =
-                from el in issues
-                where (string)el.Attribute("Level") == "CriticalWarning"
-                select el;
-
-            return warn.ToList();
-        }
-
-        private List<XElement> GetWarnings(List<XElement> issues)
-        {
-            IEnumerable<XElement> warn =
-                from el in issues
-                where (string)el.Attribute("Level") == "Warning"
-                select el;
-
-            return warn.ToList();
-        }
     }
 }
